@@ -1,0 +1,48 @@
+/* WebSprint premium design refinement. Lightweight CSS-only visuals. */
+:root{--lime:#d4fb87;--line:#364334;--panel:#182019}
+body{background:radial-gradient(ellipse 70% 24% at 55% 2%,#253b23 0%,transparent 65%),#0e130f;color:#f4f7ed;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:#d4fb87;color:#10180c}
+.topbar{background:#0e150ef0;border-color:#d5f7bc18;box-shadow:0 12px 45px #0002}
+.brand{font-size:20px}.mark{border-radius:11px;box-shadow:0 3px 20px #c9f36a35}
+.topbar nav a,.nav-cta{transition:color .2s,border-color .2s}.nav-cta:hover{border-color:var(--lime);color:var(--lime)}
+.hero{position:relative;isolation:isolate;min-height:710px;gap:70px}
+.hero:before{content:"";position:absolute;z-index:-1;right:6%;top:13%;width:370px;aspect-ratio:1;background:radial-gradient(circle,#b8db7040,transparent 70%);filter:blur(45px);pointer-events:none}
+.hero .eyebrow{color:#b6e68b}.hero h1{font-size:clamp(64px,7.6vw,104px);line-height:.985;letter-spacing:-.078em;margin-top:31px}
+.hero h1 em{color:#d5fa92;text-shadow:0 0 45px #c9f36a22}.hero h1 span{color:#91a08b}
+.hero .lead{font-size:16px;color:#b7c4b2;max-width:500px;line-height:1.85}
+.hero .btn{min-height:52px;font-size:12px;padding:15px 25px;border-radius:11px;box-shadow:0 12px 34px #a6d96727}
+.visual{transform:translateY(-6px)}.browser{width:min(430px,96%);border-radius:18px;box-shadow:0 45px 110px #000a,0 0 0 1px #d9eec72f;transform:rotate(2deg)}
+.mock{padding:30px 32px 28px}.mock h2{font-size:53px}.float{border-radius:10px;backdrop-filter:blur(12px);background:#273327e8;box-shadow:0 12px 36px #0004}
+.ticker{font-size:11px;letter-spacing:2.5px;padding:19px;background:#162014;color:#b7cbae}
+.sectionhead h2,.about h2,.final h2{letter-spacing:-.06em}.sectionhead>p{font-size:14px;line-height:1.9}
+.steps{gap:16px;border:0}.steps article{background:linear-gradient(145deg,#202b1d,#151d16);border:1px solid #465640;border-radius:18px;min-height:265px;padding:32px;transition:transform .22s,border-color .22s}
+.steps article:last-child{border:1px solid #465640}.steps article:hover{transform:translateY(-4px);border-color:#a1d771}.steps b{font-size:30px;margin:34px 0 19px}.steps p{font-size:13px}
+.builder-section{background:linear-gradient(180deg,#182118,#121a14 62%,#162016);border-color:#bff17e1f}
+.builder-intro h2{font-size:clamp(50px,6vw,76px);letter-spacing:-.065em}.builder-intro p{font-size:14px;line-height:1.7}
+.studio-wrap{background:linear-gradient(150deg,#1b291d,#0e160f 70%);border:1px solid #496446;border-radius:24px;box-shadow:0 30px 90px #0005,0 0 0 1px #a9e56b12 inset}
+.studio-heading{padding-bottom:15px}.studio-heading h3{letter-spacing:-.05em}.studio-actions #previewBtn{box-shadow:0 8px 25px #aadf6a26}
+.studio-btn,.ai-tools button{background:#233123;border-color:#4a6247;transition:background .2s,transform .2s,border-color .2s}
+.studio-btn:hover,.ai-tools button:hover{background:#2d4028;transform:translateY(-1px)}
+.ai-bar{background:linear-gradient(125deg,#253521,#172417);border:1px solid #53714a;box-shadow:0 12px 35px #0002}
+.ai-prompt input{background:#111a12;border-color:#506849}.ai-prompt input:focus{outline:2px solid #c9f36a70;outline-offset:1px}
+.studio-shell{border:1px solid #687963;border-radius:13px;box-shadow:0 15px 55px #0006}
+.builder{border-color:#4b6048;border-radius:22px;background:#101810;box-shadow:0 25px 90px #0003}
+.builder aside{background:#152016}.builder-main{padding:42px 46px}.panel h3{font-size:clamp(38px,4vw,48px);letter-spacing:-.055em}
+.template,.theme,.features label,.backend-options label{transition:border-color .2s,background .2s,transform .2s}.template{min-height:114px;background:#1c291b;border-color:#3d503a}
+.template:hover,.theme:hover{transform:translateY(-2px)}.template.selected,.theme.selected{background:#293c24;border-color:#c9f36a;box-shadow:0 0 0 1px #c9f36a30 inset}
+.features label:hover,.backend-options label:hover{border-color:#769b65;background:#253322}.features input,.backend-options input{width:15px;height:15px}
+.field input,.field textarea,.field select{background:#1d2a1d;border-color:#435641;min-height:44px}.field textarea{min-height:85px}
+.panel-actions .btn{border-radius:10px;min-height:46px;padding-inline:20px}.stepnav button.active{background:#2d4026;box-shadow:inset 3px 0 var(--lime)}
+.ws-stage,.ws-preview-stage{background-color:#293529}.ws-stage iframe,.ws-preview-stage iframe{border-radius:9px;box-shadow:0 20px 55px #0007}
+.ws-preview-dialog{background:#121a13;border-color:#607857}.ws-preview-toolbar{background:#1a271b}.ws-stage-top{background:linear-gradient(130deg,#293b26,#1b2a1c)}
+.possibilities article{border-radius:17px;border-color:#40533b;padding:28px;transition:transform .2s,border-color .2s}.possibilities article:hover{transform:translateY(-3px);border-color:#b0d786}
+.about{background:linear-gradient(115deg,#ddfcab,#b8e57b);padding:115px 0}.final .btn{padding:17px 26px;border-radius:11px}
+@media(max-width:900px){.hero{gap:25px;min-height:auto}.hero h1{font-size:clamp(55px,8vw,80px)}.builder-main{padding:30px 24px}}
+@media(max-width:600px){.hero{padding-top:70px}.hero h1{font-size:clamp(51px,13vw,70px);letter-spacing:-.065em}.hero .lead{font-size:14px}.hero:before{width:220px}.steps{grid-template-columns:1fr}.steps article{min-height:205px;padding:24px}.studio-wrap{border-radius:17px}.builder-main{padding:25px 15px}.sectionhead h2{font-size:clamp(39px,10vw,54px)}.about{padding:75px 0}.ws-stage{height:510px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.001ms!important;transition-duration:.001ms!important;transform:none!important}}
+.hero-trust{display:flex;gap:10px 17px;flex-wrap:wrap;margin-top:30px;color:#b8cdb2;font-size:11px;font-weight:700}
+.hero-trust span{display:inline-flex;gap:6px;align-items:center}.hero-trust span::first-letter{color:var(--lime)}
+.hero-mock-desc{font-size:11px;line-height:1.65;color:#5f705a;max-width:300px}
+.mock .micro{margin-top:35px}.mock h2{margin-bottom:12px}.mock .mockbottom{margin-top:22px}
+.browserbar span:nth-child(2){letter-spacing:.02em}
+@media(max-width:800px){.hero-trust{justify-content:center}}
