@@ -1,5 +1,19 @@
 /* Beginner-facing template and feature library beside the in-preview editor. */
 (() => {
+  // Keep marketing copy focused on the actual service: a user-designed visual
+  // prototype, followed by developer-led implementation.
+  const hero=document.querySelector('.hero');
+  if(hero){
+    const eyebrow=hero.querySelector('.eyebrow');if(eyebrow)eyebrow.innerHTML='<i></i> TIRED OF ENDLESS AI PROMPTS?';
+    const heading=hero.querySelector('h1');if(heading)heading.innerHTML='Stop prompting.<br><em>Start designing.</em><br><span>We build the code.</span>';
+    const lead=hero.querySelector('.lead');if(lead)lead.textContent='Spent hours prompting an AI website builder, only to end up with something that still isn’t yours? Take control of every page, button and detail. Design your frontend visually — our developers bring it to life.';
+    const primary=hero.querySelector('.actions .btn');if(primary)primary.textContent='Design my website ↗';
+    const trust=hero.querySelector('.hero-trust');if(trust)trust.innerHTML='<span>✓ No prompt loops</span><span>✓ Your design, your decisions</span><span>✓ Real developer handoff</span>';
+  }
+  const intro=document.querySelector('.builder-intro');
+  if(intro){const h=intro.querySelector('h2');if(h)h.innerHTML='Your vision.<br><em>Our code.</em>';const p=intro.querySelector('p');if(p)p.textContent='Skip the guesswork. Choose a starting template, build every page yourself, and hand us a design you actually love.';}
+  document.title='WebSprint — You Design. We Build.';
+  const description=document.querySelector('meta[name="description"]');if(description)description.content='Tired of endless AI website prompts? Design your own website visually with WebSprint. You decide every detail; our developers handle the code.';
   const stage=document.querySelector('.panel[data-panel="3"] .ws-stage');
   if(!stage)return;
   const palette=document.createElement('aside');
@@ -9,6 +23,11 @@
   pagesPanel.innerHTML='<strong>Pages on your website</strong><p>Design Discover, Explore, Services or any other page separately.</p><label>Editing page<select id="ws-page-picker"><option value="home">Home</option></select></label><div class="ws-add-page"><input id="ws-page-name" placeholder="New page name, e.g. Explore" aria-label="New page name"><button type="button" id="ws-page-add">＋ Add page</button></div><button type="button" id="ws-page-home">↖ Back to homepage</button><p id="ws-page-tip" role="status" aria-live="polite">Each page gets its own link and editable content.</p>';
   const movePanel=document.createElement('div');movePanel.className='ws-palette-section ws-palette-move';
   movePanel.innerHTML='<strong>Move & resize selection</strong><p>Select something on the website, then move it with these controls or drag it in the canvas.</p><div class="ws-palette-move-buttons"><button type="button" id="ws-palette-up">↑ Move up</button><button type="button" id="ws-palette-down">↓ Move down</button></div><label>Width <select id="ws-palette-width"><option value="auto">Natural</option><option value="50%">Half width</option><option value="75%">Three-quarter</option><option value="100%">Full width</option></select></label><button type="button" id="ws-palette-to-page">Move into current page</button>';
+  const alignRow=document.createElement('div');alignRow.className='ws-palette-align';
+  alignRow.innerHTML='<span>Horizontal position</span><div><button type="button" data-align="left">⇤ Left</button><button type="button" data-align="center">↔ Centre</button><button type="button" data-align="right">Right ⇥</button></div>';
+  movePanel.querySelector('.ws-palette-move-buttons').after(alignRow);
+  movePanel.querySelector('#ws-palette-width option[value="auto"]').value='max-content';
+  movePanel.querySelector('#ws-palette-width option:first-child').textContent='Fit content';
   const stylingPanel=document.createElement('div');stylingPanel.className='ws-palette-section ws-visual-settings';
   stylingPanel.innerHTML='<strong>Appearance & spacing</strong><p>No CSS needed. Change the website theme or the selected element’s size and spacing.</p><label>Website appearance<select id="ws-visual-mode"><option value="light">☀ Light</option><option value="dark">☾ Dark</option></select></label><div class="ws-measure-grid"><label>Width (px)<input type="number" id="ws-size-width" min="20" max="2000" placeholder="Auto"></label><label>Height (px)<input type="number" id="ws-size-height" min="20" max="2000" placeholder="Auto"></label><label>Inside spacing (px)<input type="number" id="ws-size-padding" min="0" max="250" placeholder="Keep"></label><label>Outside spacing (px)<input type="number" id="ws-size-margin" min="0" max="250" placeholder="Keep"></label><label>Corner radius (px)<input type="number" id="ws-size-radius" min="0" max="150" placeholder="Keep"></label><label>Gap (px)<input type="number" id="ws-size-gap" min="0" max="150" placeholder="Keep"></label></div><button type="button" id="ws-visual-apply">Apply size & spacing</button><p id="ws-visual-status" role="status" aria-live="polite">Select an element to adjust its dimensions. Leave a field empty to keep its current value.</p>';
   palette.querySelector('.ws-palette-section').before(movePanel);
@@ -48,6 +67,12 @@
   };
   $('#ws-palette-up').onclick=()=>moveSelected(-1);
   $('#ws-palette-down').onclick=()=>moveSelected(1);
+  alignRow.querySelectorAll('[data-align]').forEach(button=>button.onclick=()=>{
+    const c=currentEditor()?.getSelected();if(!c)return note('Select an element first.');
+    const position=button.dataset.align;
+    c.addStyle({'margin-left':position==='left'?'0':'auto','margin-right':position==='right'?'0':'auto','align-self':position==='center'?'center':position==='right'?'flex-end':'flex-start','justify-self':position==='center'?'center':position==='right'?'end':'start'});
+    note('Moved selected element to the '+position+'.');
+  });
   $('#ws-palette-width').onchange=event=>{const c=currentEditor()?.getSelected();if(!c)return note('Select an element first.');c.addStyle({width:event.target.value,'max-width':'100%'});note('Width updated.');};
   $('#ws-palette-to-page').onclick=()=>{
     const e=currentEditor(),c=e?.getSelected(),page=customPages().find(x=>x.getAttributes()['data-ws-user-page']===activePage);

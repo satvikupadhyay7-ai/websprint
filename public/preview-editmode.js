@@ -21,6 +21,81 @@
   stage.append(inspector);
   const $=s=>panel.querySelector(s);
   const inspect=s=>inspector.querySelector(s);
+  const position=document.createElement('div');position.className='ws-simple-placement';
+  position.innerHTML='<strong>Place element</strong><p>Move the selected item horizontally.</p><div class="ws-simple-placement-grid"><button type="button" data-place="left">⇤ Left</button><button type="button" data-place="center">↔ Centre</button><button type="button" data-place="right">Right ⇥</button></div>';
+  inspect('#ws-simple-width').closest('label').after(position);
+  position.querySelectorAll('[data-place]').forEach(button=>button.onclick=()=>{
+    const c=selected(),e=editorRef();if(!c){inspect('#ws-simple-status').textContent='Select an element first.';return;}
+    const place=button.dataset.place;
+    const margins=place==='left'?{'margin-left':'0','margin-right':'auto'}:place==='right'?{'margin-left':'auto','margin-right':'0'}:{'margin-left':'auto','margin-right':'auto'};
+    c.addStyle({...margins,'align-self':place==='center'?'center':place==='right'?'flex-end':'flex-start','justify-self':place==='center'?'center':place==='right'?'end':'start'});
+    const tag=String(c.get('tagName')||'').toLowerCase();
+    if(['details','button','a','span','small'].includes(tag))c.addStyle({'width':c.getStyle()?.width||'max-content','max-width':'100%'});
+    e?.refresh?.();inspect('#ws-simple-status').textContent='✓ Moved '+place+'.';
+  });
+  const precision=document.createElement('section');precision.className='ws-precision-move';
+  precision.innerHTML='<div class="ws-precision-title"><strong>Move it anywhere</strong><small>Works even if it is the only item on the row.</small></div><button type="button" id="ws-grab-move">✥ Grab & move on canvas</button><div class="ws-nudge-pad"><span></span><button type="button" data-nudge="0,-8" aria-label="Move up 8 pixels">↑</button><span></span><button type="button" data-nudge="-8,0" aria-label="Move left 8 pixels">←</button><button type="button" id="ws-move-reset" aria-label="Reset position">⌖</button><button type="button" data-nudge="8,0" aria-label="Move right 8 pixels">→</button><span></span><button type="button" data-nudge="0,8" aria-label="Move down 8 pixels">↓</button><span></span></div><div class="ws-precision-coordinates"><label>Left / right<input type="range" id="ws-move-x" min="-500" max="500" step="1" value="0"></label><label>Up / down<input type="range" id="ws-move-y" min="-500" max="500" step="1" value="0"></label></div><p id="ws-move-position">X: 0 · Y: 0</p>';
+  position.after(precision);
+  let moving=false,dragging=null,moveDoc=null;
+  const numberStyle=(c,key)=>{const n=parseFloat(c?.getStyle?.()[key]);return Number.isFinite(n)?n:0;};
+  const showCoordinates=()=>{
+    const c=selected(),x=numberStyle(c,'left'),y=numberStyle(c,'top');
+    inspect('#ws-move-x').value=String(Math.max(-500,Math.min(500,x)));
+    inspect('#ws-move-y').value=String(Math.max(-500,Math.min(500,y)));
+    inspect('#ws-move-position').textContent=`X: ${Math.round(x)}px · Y: ${Math.round(y)}px`;
+  };
+  const moveTo=(x,y)=>{
+    const c=selected();if(!c)return;
+    const nx=Math.max(-1000,Math.min(1000,Math.round(x))),ny=Math.max(-1000,Math.min(1000,Math.round(y)));
+    c.addStyle({position:'relative',left:nx+'px',top:ny+'px'});
+    showCoordinates();
+    const saved=document.querySelector('#designSaved');if(saved)saved.textContent='Unsaved changes';
+  };
+  precision.querySelectorAll('[data-nudge]').forEach(b=>b.onclick=()=>{
+    const c=selected();if(!c)return inspect('#ws-simple-status').textContent='Select an element first.';
+    const [dx,dy]=b.dataset.nudge.split(',').map(Number);
+    moveTo(numberStyle(c,'left')+dx,numberStyle(c,'top')+dy);
+  });
+  inspect('#ws-move-reset').onclick=()=>moveTo(0,0);
+  ['x','y'].forEach(axis=>inspect('#ws-move-'+axis).oninput=()=>{
+    const c=selected();if(!c)return;
+    moveTo(axis==='x'?Number(inspect('#ws-move-x').value):numberStyle(c,'left'),axis==='y'?Number(inspect('#ws-move-y').value):numberStyle(c,'top'));
+  });
+  const stopGrab=()=>{moving=false;dragging=null;stage.classList.remove('ws-grab-active');inspect('#ws-grab-move').textContent='✥ Grab & move on canvas';};
+  inspect('#ws-grab-move').onclick=()=>{
+    if(moving){stopGrab();return;}
+    if(!selected())return inspect('#ws-simple-status').textContent='Select an element first.';
+    moving=true;stage.classList.add('ws-grab-active');inspect('#ws-grab-move').textContent='✓ Finish moving';
+    inspect('#ws-simple-status').textContent='Drag the selected element directly. Use arrows for fine adjustments.';
+  };
+  const down=event=>{
+    if(!editing||!moving||event.button!==0)return;
+    const c=selected(),el=c?.getEl?.();if(!el||!(el===event.target||el.contains(event.target)))return;
+    dragging={id:event.pointerId,x:event.clientX,y:event.clientY,startX:numberStyle(c,'left'),startY:numberStyle(c,'top')};
+    event.preventDefault();event.stopImmediatePropagation();
+  };
+  const drag=event=>{
+    if(!dragging||event.pointerId!==dragging.id)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    moveTo(dragging.startX+event.clientX-dragging.x,dragging.startY+event.clientY-dragging.y);
+  };
+  const up=event=>{if(dragging&&event.pointerId===dragging.id){dragging=null;event.stopImmediatePropagation();}};
+  const keyNudge=event=>{
+    if(!editing||!selected()||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
+    const target=event.target;
+    if(target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+    const step=event.shiftKey?10:1;
+    const dx=event.key==='ArrowLeft'?-step:event.key==='ArrowRight'?step:0;
+    const dy=event.key==='ArrowUp'?-step:event.key==='ArrowDown'?step:0;
+    const c=selected();moveTo(numberStyle(c,'left')+dx,numberStyle(c,'top')+dy);
+    event.preventDefault();
+  };
+  document.addEventListener('keydown',keyNudge);
+  const attachCanvas=()=>{
+    const doc=editorRef()?.Canvas?.getDocument?.();if(!doc||doc===moveDoc)return;
+    if(moveDoc){moveDoc.removeEventListener('pointerdown',down,true);moveDoc.removeEventListener('pointermove',drag,true);moveDoc.removeEventListener('pointerup',up,true);moveDoc.removeEventListener('keydown',keyNudge,true);}
+    moveDoc=doc;doc.addEventListener('pointerdown',down,true);doc.addEventListener('pointermove',drag,true);doc.addEventListener('pointerup',up,true);doc.addEventListener('keydown',keyNudge,true);
+  };
   const status=message=>{$('#ws-inline-status').textContent=message;};
   const selected=()=>editorRef()?.getSelected();
   const syncSelection=()=>{
@@ -44,6 +119,7 @@
       ['padding','margin'].forEach(key=>inspect('#ws-simple-'+key).value='');
       inspect('#ws-simple-status').textContent='';
     }
+    showCoordinates();
   };
   let advanced=false;
   const refreshInspector=()=>{stage.classList.toggle('ws-advanced-tools',advanced);inspect('#ws-advanced-toggle').textContent=advanced?'✓ Use simple editor':'⚙ Advanced tools';};
@@ -83,11 +159,12 @@
     // a refresh after layout, otherwise drag handles target the old coordinates.
     const refreshCanvas=()=>{e.refresh?.();e.Canvas?.refresh?.();};
     requestAnimationFrame(()=>requestAnimationFrame(refreshCanvas));
+    requestAnimationFrame(()=>requestAnimationFrame(attachCanvas));
     syncSelection();status('Edit mode is on. Drag elements by their selection handle, or use the Move controls beside the page.');
   };
   const exit=()=>{
     if(!editing)return;
-    editing=false;stage.classList.remove('ws-is-designing');panel.hidden=true;inspector.hidden=true;
+    editing=false;stopGrab();stage.classList.remove('ws-is-designing');panel.hidden=true;inspector.hidden=true;
     document.dispatchEvent(new CustomEvent('websprint:editmode',{detail:{editing:false}}));
     if(nextSibling&&nextSibling.parentNode===home)home.insertBefore(canvas,nextSibling);else home.append(canvas);
     frame.hidden=false;frame.srcdoc=getPreview();

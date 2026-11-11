@@ -146,5 +146,3 @@ Open `http://localhost:3000`.
 - The editor library and Google Fonts are loaded from public CDNs, so the editor needs an internet connection.
 - GrapesJS is now bundled as an npm dependency and served locally. Google Fonts still use the internet; system fonts provide a fallback.
 - Review every AI suggestion and backend recommendation with the developer before implementation.
-#   w e b s p r i n t  
- 
