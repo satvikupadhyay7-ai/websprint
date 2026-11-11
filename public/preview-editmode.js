@@ -158,6 +158,9 @@
     // GrapesJS caches canvas offsets. Moving the editor to a new parent requires
     // a refresh after layout, otherwise drag handles target the old coordinates.
     const refreshCanvas=()=>{e.refresh?.();e.Canvas?.refresh?.();};
+    // Start phone visitors in a phone-sized canvas instead of squeezing a desktop
+    // site into the narrow editor. The desktop device choice stays untouched.
+    if(window.matchMedia('(max-width: 750px)').matches)e.setDevice('Mobile');
     requestAnimationFrame(()=>requestAnimationFrame(refreshCanvas));
     requestAnimationFrame(()=>requestAnimationFrame(attachCanvas));
     syncSelection();status('Edit mode is on. Drag elements by their selection handle, or use the Move controls beside the page.');
@@ -173,6 +176,30 @@
     document.querySelector('#designSaved').textContent='Unsaved changes';
   };
   toggle.onclick=()=>editing?exit():enter();
+  const fullscreenButton=review.querySelector('#ws-open-large');
+  const designHint=document.createElement('p');
+  designHint.className='ws-fullscreen-hint';
+  designHint.innerHTML='<span class="ws-hint-arrow" aria-hidden="true">↓</span><span class="ws-hint-copy"><strong>Design exactly what you want — right in the preview below.</strong><small>Make every detail yours. Open fullscreen for precise control, then click, drag, resize, edit text, and position elements exactly where you want them. Check Desktop, Tablet and Mobile before submitting.</small></span><button type="button" class="ws-hint-open">⛶ Open fullscreen editor ↗</button>';
+  stageTop.after(designHint);
+  if(fullscreenButton){
+    fullscreenButton.textContent='⛶ Fullscreen design studio';
+    fullscreenButton.onclick=async()=>{
+      if(document.fullscreenElement===review){await document.exitFullscreen?.();return;}
+      if(!editing)enter();
+      if(typeof review.requestFullscreen!=='function'){
+        status('Fullscreen is not available in this browser. Continue using the in-page editor.');return;
+      }
+      try{await review.requestFullscreen();editorRef()?.refresh?.();editorRef()?.Canvas?.refresh?.();}
+      catch{status('The browser blocked fullscreen. Use the editor below instead.');}
+    };
+    document.addEventListener('fullscreenchange',()=>{
+      fullscreenButton.textContent=document.fullscreenElement===review?'↙ Exit fullscreen':'⛶ Fullscreen design studio';
+      requestAnimationFrame(()=>{editorRef()?.refresh?.();editorRef()?.Canvas?.refresh?.();});
+    });
+    designHint.querySelector('.ws-hint-open')?.addEventListener('click',()=>fullscreenButton.click());
+  }else{
+    designHint.querySelector('.ws-hint-open')?.remove();
+  }
   $('#ws-finish-edit').onclick=exit;
   $('#ws-apply-design').onclick=()=>{
     const e=editorRef(),c=selected();

@@ -33,26 +33,17 @@
     const doc=new DOMParser().parseFromString(html,'text/html');
     const site=doc.querySelector('[data-ws-site]');
     if(!site)return html;
-    const brand=value('projectName'),description=value('description'),audience=value('audience'),pages=value('pagesNeeded');
-    if(brand){
-      const navBrand=site.querySelector('.ws-brand');
-      if(navBrand){navBrand.textContent=brand;const mark=doc.createElement('span');mark.textContent='✳';navBrand.append(mark);}
-      const footerBrand=site.querySelector('.ws-footer strong');if(footerBrand)footerBrand.textContent=brand+' ✳';
-      const heroTitle=site.querySelector('.ws-hero h1');if(heroTitle)heroTitle.textContent=brand;
-      doc.title=brand;
-    }
-    if(description){
-      const heroCopy=site.querySelector('.ws-hero .ws-intro');if(heroCopy)heroCopy.textContent=description;
-      const contactCopy=site.querySelector('[data-route="contact"] .ws-intro');if(contactCopy)contactCopy.textContent=description;
-    }
-    if(audience){const kicker=site.querySelector('.ws-hero .ws-kicker');if(kicker)kicker.textContent='FOR '+audience;}
+    // Keep the starter design and its sample branding exactly as the user sees it.
+    // Project details are placed only where the user deliberately inserts a
+    // Dynamic Text element through the Arrange your website toolbar.
+    const pages=value('pagesNeeded');
     if(pages){
       const existing=new Set([...site.querySelectorAll('[data-route]')].map(x=>x.dataset.route));
       const footer=site.querySelector('.ws-footer');const nav=site.querySelector('.ws-navlinks');
       for(const name of [...new Set(pages.split(/[,\n;]+/).map(p=>p.trim()).filter(Boolean))].slice(0,8)){
         const route=slug(name);
         if(!route||existing.has(route)||['home','about','contact','shop','cart','checkout','features'].includes(route))continue;
-        const page=pageContent(doc,name,description,audience);page.hidden=true;
+        const page=pageContent(doc,name,'','');page.hidden=true;
         site.insertBefore(page,footer);existing.add(route);
         if(nav&&nav.children.length<9){const link=doc.createElement('a');link.href='#/'+route;link.dataset.routeLink=route;link.textContent=name;nav.append(link);}
       }

@@ -230,7 +230,9 @@
   document.querySelectorAll('.back').forEach(b=>b.onclick=()=>showStage(step-1));
   stepNav.querySelectorAll('button').forEach(b=>b.onclick=()=>showStage(+b.dataset.step));
   $('#edit').onclick=()=>showStage(0);
-  review.querySelectorAll('[data-stage-width]').forEach(b=>b.onclick=()=>{review.querySelector('iframe').style.width=b.dataset.stageWidth;review.querySelectorAll('[data-stage-width]').forEach(x=>x.classList.toggle('is-active',x===b))});
+  review.querySelectorAll('[data-stage-width]').forEach(b=>b.onclick=()=>{const frame=review.querySelector('iframe');frame.style.width=b.dataset.stageWidth==='100%'?'100%':`min(100%, ${b.dataset.stageWidth})`;review.querySelectorAll('[data-stage-width]').forEach(x=>x.classList.toggle('is-active',x===b))});
+  // Phones start with the phone preview; users can still switch devices.
+  if(window.matchMedia('(max-width: 700px)').matches)review.querySelector('[data-stage-width="390px"]')?.click();
   $('#ws-open-large').onclick=()=>$('#previewBtn').click();
   $('#ws-edit-design').onclick=()=>{$('#designStudio').scrollIntoView({behavior:'smooth',block:'start'});$('#aiStatus').textContent='Make your edits, then return to Step 04 to review them.'};
 

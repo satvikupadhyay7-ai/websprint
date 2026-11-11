@@ -8,7 +8,7 @@ const app = express();
 const port = Number(process.env.PORT || 3000);
 app.disable('x-powered-by');
 app.use(compression());
-app.use(express.json({ limit: '3mb' }));
+app.use(express.json({ limit: '6mb' }));
 app.use('/vendor/grapesjs', express.static(path.join(__dirname, 'node_modules', 'grapesjs', 'dist'), { maxAge: '30d', immutable: true }));
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '5m', etag: true }));
 
@@ -151,13 +151,40 @@ app.post('/api/submit', async (req, res) => {
     const requirementsPdf = await createRequirementsPdf(fields, name, clean(body.projectName || websiteType, 120));
     const pdfAttachment = { filename: `${safeFileName}-project-requirements.pdf`, content: requirementsPdf.toString('base64') };
 
+    const pageHierarchy = Array.isArray(body.pageHierarchy) ? body.pageHierarchy.slice(0, 12).map(item => ({
+      route: clean(item.route, 64).replace(/[^a-z0-9-]/gi, ''),
+      title: clean(item.title, 120),
+      hierarchy: Array.isArray(item.hierarchy) ? item.hierarchy.slice(0, 65).map(node => ({
+        level: Math.min(4, Math.max(0, Number(node.level) || 0)),
+        type: clean(node.type, 20).replace(/[^a-z0-9]/gi, ''),
+        label: clean(node.label, 125)
+      })) : []
+    })).filter(item => item.route) : [];
+    const screenshotAttachments = (Array.isArray(body.pageImages) ? body.pageImages : []).slice(0, 10).flatMap(item => {
+      const route = clean(item.route, 60).replace(/[^a-z0-9-]/gi, '');
+      const content = String(item.content || '');
+      if (!route || !/^[a-zA-Z0-9+/=]+$/.test(content) || content.length > 360000 || content.length < 100) return [];
+      return [{ filename: `${safeFileName}-${route}-preview.jpg`, content }];
+    });
+    const hierarchyText = pageHierarchy.length ? pageHierarchy.map(page =>
+      `${page.title} (#/${page.route})\n${page.hierarchy.map(node => `${'  '.repeat(node.level)}• ${node.type.toUpperCase()}: ${node.label}`).join('\n')}`
+    ).join('\n\n') : 'The complete HTML attachment contains all page content and structure.';
+    const pageCardsHtml = pageHierarchy.length ? pageHierarchy.map(page => {
+      const nodes = page.hierarchy.map(node => `<li style="margin:5px 0 5px ${node.level * 13}px;color:#435b4c"><b style="color:#789771;font-size:10px">${escapeHtml(node.type.toUpperCase())}</b> ${escapeHtml(node.label)}</li>`).join('');
+      return `<section style="background:#f8faf6;border:1px solid #dfe8db;border-radius:15px;padding:17px 20px;margin:14px 0"><h3 style="margin:0 0 4px;color:#234e38;font-size:17px">${escapeHtml(page.title)}</h3><p style="margin:0 0 12px;color:#76917e;font-size:12px">#/${escapeHtml(page.route)}</p><ul style="padding-left:18px;margin:0;font-size:12px;line-height:1.7">${nodes || '<li>Page layout included in the HTML preview.</li>'}</ul></section>`;
+    }).join('') : '<p>Open the attached HTML preview to inspect all pages and their structure.</p>';
+    const captureNote = screenshotAttachments.length
+      ? `${screenshotAttachments.length} page image preview(s) attached as JPG files.`
+      : 'Automatic page screenshots were unavailable in this browser. The complete HTML preview and page structure are attached for inspection.';
+    const ownerEmailHtml = `<div style="margin:0;background:#edf2e9;padding:34px 15px;font-family:Arial,sans-serif;color:#203528"><main style="max-width:760px;margin:auto;background:#fff;border:1px solid #dbe7d5;border-radius:20px;overflow:hidden"><header style="padding:30px 34px;background:#152c20;color:#f2f9ec"><p style="margin:0 0 12px;color:#d3f79f;font-size:12px;font-weight:bold;letter-spacing:2px">WEBSPRINT · DESIGN HANDOFF</p><h1 style="margin:0;font-size:29px;letter-spacing:-1px">A new website is ready for review.</h1><p style="margin:12px 0 0;color:#c4d8c8;line-height:1.6">Final frontend preview, page hierarchy, requirements and visual references.</p></header><section style="padding:28px 34px"><h2 style="color:#1d5139;font-size:20px;margin-top:0">${escapeHtml(body.projectName || websiteType)}</h2><p style="line-height:1.7;font-size:13px;color:#5b6e5e">Submitted by <b>${escapeHtml(name)}</b> · ${escapeHtml(email)}</p><div style="padding:15px 17px;border-radius:12px;background:#eaf5de;border-left:4px solid #7bb65b"><b>Files included</b><p style="margin:7px 0 0;font-size:12px;line-height:1.7">Complete final preview (.html) · Project requirements (.pdf) · ${escapeHtml(captureNote)}</p></div><h2 style="margin:26px 0 12px;font-size:19px;color:#244734">Page structure & hierarchy</h2>${pageCardsHtml}<h2 style="margin:26px 0 12px;font-size:19px;color:#244734">Project details</h2><table style="width:100%;border-collapse:collapse;font-size:12px;line-height:1.5">${htmlRows}</table><h2 style="margin:26px 0 12px;font-size:19px;color:#244734">Developer recommendations</h2>${recommendationsHtml}<p style="margin-top:24px;border-top:1px solid #e0eadc;padding-top:17px;color:#65806b;font-size:12px">Open the attached HTML file in a browser to review the complete design, all routes and interactions. The page images are quick visual references; the HTML is authoritative.</p></section></main></div>`;
+
     // Send the developer the complete brief and the customer's actual frontend prototype as an HTML attachment.
     const ownerResult = await sendEmail({
       from: process.env.FROM_EMAIL, to: [process.env.TO_EMAIL], ...(email ? { reply_to: email } : {}),
       subject: `New WebSprint project — ${clean(body.projectName || websiteType, 120)}`,
-      text: `NEW WEBSPRINT PROJECT\n\n${textBody}\n\nThe final frontend preview is attached as ${safeFileName}-preview.html.`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:820px;margin:auto;color:#182018"><h1>New WebSprint project request</h1><p>The customer submitted a website prototype and development brief. Reply directly to this email to contact ${escapeHtml(name)}.</p><h2>Project & customer details</h2><table style="width:100%;border-collapse:collapse">${htmlRows}</table><h2>Backend recommendations</h2>${recommendationsHtml}<p><b>Frontend preview attached:</b> ${escapeHtml(safeFileName)}-preview.html. Download and open it in a browser to view the customer's prototype.</p></div>`,
-      attachments: [{ filename: `${safeFileName}-preview.html`, content: previewAttachment }, pdfAttachment]
+      text: `NEW WEBSPRINT PROJECT\n\n${textBody}\n\nPAGE STRUCTURE & HIERARCHY\n${hierarchyText}\n\n${captureNote}\n\nThe final frontend preview is attached as ${safeFileName}-preview.html.`,
+      html: ownerEmailHtml,
+      attachments: [{ filename: `${safeFileName}-preview.html`, content: previewAttachment }, pdfAttachment, ...screenshotAttachments]
     });
 
     let confirmationEmailSent = false;
@@ -165,8 +192,8 @@ app.post('/api/submit', async (req, res) => {
       await sendEmail({
         from: process.env.FROM_EMAIL, to: [email], reply_to: process.env.TO_EMAIL,
         subject: `We received your ${clean(body.projectName || 'website', 100)} project brief — WebSprint`,
-        attachments: [pdfAttachment],
-        text: `Hi ${name},\n\nThank you for submitting your website idea to WebSprint. Your project brief and frontend preview have been received. Your website project is now in our planning queue while your developer reviews the requirements.\n\nYour developer will contact you using your preferred method (${contactMethod || 'email'}) to discuss the design, backend requirements, timeline and next steps. Kindly reply to this email or have a conversation with your developer before development is finalised.\n\nThank you,\nWebSprint`,
+        attachments: [{ filename: `${safeFileName}-preview.html`, content: previewAttachment }, pdfAttachment],
+        text: `Hi ${name},\n\nThank you for submitting your website idea to WebSprint. Your final website preview (HTML) and project brief (PDF) are attached. Download the HTML file and open it in a browser to review your design. Your developer will also receive this final preview.\n\nYour developer will contact you using your preferred method (${contactMethod || 'email'}) to discuss the design, backend requirements, timeline and next steps. Kindly reply to this email or have a conversation with your developer before development is finalised.\n\nThank you,\nWebSprint`,
         html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172018;line-height:1.7"><h1 style="color:#526c2e">Thanks for choosing WebSprint, ${escapeHtml(name)}!</h1><p>We have successfully received your website brief and frontend preview.</p><p><b>Your website project is now in our planning queue.</b> Your developer will review your design, requested features, backend requirements and timeline, then contact you using your preferred method: <b>${escapeHtml(contactMethod || 'Email')}</b>.</p><p><b>Kindly have a conversation with your developer</b> to confirm the details and next steps before development is finalised.</p><p>You can simply reply to this email to reach the WebSprint team.</p><p>Thank you,<br><b>Team WebSprint</b></p></div>`
       });
       confirmationEmailSent = true;

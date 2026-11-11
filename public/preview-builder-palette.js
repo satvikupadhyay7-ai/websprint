@@ -39,6 +39,61 @@
   const arrange=()=>window.WebSprintArrange;
   const note=s=>{$('#ws-palette-note').textContent=s;};
   const currentEditor=()=>typeof editor!=='undefined'?editor:null;
+  const dynamicFields=[
+    ['company','Company name','projectName','Your Company'],
+    ['audience','Target audience','audience','Your audience'],
+    ['description','Company description','description','Your business description'],
+    ['pages','Website pages','pagesNeeded','Home, About, Contact'],
+    ['timeline','Launch timeline','timeline','Your launch timeline']
+  ];
+  const dynamicValue=id=>(document.getElementById(id)?.value||'').trim();
+  const syncDynamicCanvas=()=>{
+    const e=currentEditor();if(!e)return;
+    const values=Object.fromEntries(dynamicFields.map(([key,,id,fallback])=>[key,dynamicValue(id)||fallback]));
+    e.getWrapper().find('[data-ws-dynamic]').forEach(component=>{
+      const key=component.getAttributes()?.['data-ws-dynamic'];
+      if(!Object.prototype.hasOwnProperty.call(values,key))return;
+      const safe=values[key].replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+      if(component.getAttributes()?.['data-ws-last-value']===values[key])return;
+      component.components(safe);
+      component.addAttributes({'data-ws-last-value':values[key]});
+    });
+  };
+  window.WebSprintDynamicTags={
+    insert(key){
+      const helper=arrange(),field=dynamicFields.find(row=>row[0]===key);
+      if(!helper||!field)return false;
+      const safe=(dynamicValue(field[2])||field[3]).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
+      const created=helper.insertMarkup(`<span class="ws-dynamic-text" data-ws-dynamic="${key}" style="display:inline-block;width:max-content;max-width:100%;padding:0;margin:4px 0;border:0;background:transparent;box-shadow:none;font:inherit;color:inherit;overflow-wrap:anywhere">${safe}</span>`,'after');
+      if(created){created.components(safe);created.addAttributes({'data-ws-dynamic':key});}
+      queueMicrotask(syncDynamicCanvas);
+      requestAnimationFrame(syncDynamicCanvas);
+      note(field[1]+' inserted as: '+(dynamicValue(field[2])||field[3])+'. This is taken from Step 03.');
+      return true;
+    }
+  };
+  const beforeDynamicPreview=getPreview;
+  getPreview=function(){
+    const html=beforeDynamicPreview();if(!html.includes('data-ws-dynamic'))return html;
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    doc.querySelectorAll('[data-ws-dynamic]').forEach(element=>{
+      const field=dynamicFields.find(row=>row[0]===element.getAttribute('data-ws-dynamic'));
+      if(field)element.textContent=dynamicValue(field[2])||field[3];
+    });
+    return '<!doctype html>\n'+doc.documentElement.outerHTML;
+  };
+  // The visible editor and exported preview use the same information form.
+  // No second details form is introduced anywhere in the design flow.
+  const syncDynamicPreview=()=>{
+    syncDynamicCanvas();
+    const reviewFrame=document.querySelector('.panel[data-panel="3"].active .ws-stage iframe');
+    if(reviewFrame&&!window.WebSprintPreviewEdit?.isEditing?.())reviewFrame.srcdoc=getPreview();
+  };
+  dynamicFields.forEach(([,,id])=>{
+    const input=document.getElementById(id);
+    input?.addEventListener('input',syncDynamicPreview);
+    input?.addEventListener('change',syncDynamicPreview);
+  });
   const getSite=()=>currentEditor()?.getWrapper()?.find('[data-ws-site]')?.[0];
   const setMode=mode=>{
     const site=getSite();if(!site)return note('Load a template first.');
@@ -164,8 +219,11 @@
   });
   document.addEventListener('websprint:editmode',event=>{
     palette.hidden=!event.detail.editing;
-    if(event.detail.editing){refreshTypes();refreshFeatures();refreshPagePicker();showPage(activePage);$('#ws-visual-mode').value=getSite()?.getAttributes()['data-ws-theme-mode']||'light';}
+    if(event.detail.editing){refreshTypes();refreshFeatures();refreshPagePicker();showPage(activePage);syncDynamicCanvas();$('#ws-visual-mode').value=getSite()?.getAttributes()['data-ws-theme-mode']||'light';}
     else showPage('home');
   });
   window.WebSprintPages={showPage,getCurrent:()=>activePage};
 })();
+const wsHandoffScript=document.createElement('script');
+wsHandoffScript.src='handoff-preview.js';
+document.body.append(wsHandoffScript);

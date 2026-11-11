@@ -8,9 +8,32 @@
   toolbar.innerHTML=`<div class="ws-arrange-heading"><span class="ws-arrange-dot">✦</span><div><strong>Arrange your website</strong><small id="ws-selected-label">Select an element in the canvas to move or customise it.</small></div></div><div class="ws-arrange-actions"><button type="button" id="ws-insert-button">＋ Button</button><button type="button" id="ws-insert-dropdown">＋ Dropdown</button><button type="button" id="ws-move-up" disabled>↑ Move up</button><button type="button" id="ws-move-down" disabled>↓ Move down</button><label class="ws-arrange-destination">Move to section<select id="ws-move-section" disabled><option value="">Select section…</option></select></label><button type="button" id="ws-duplicate" disabled>Duplicate</button><button type="button" id="ws-delete" disabled>Delete</button></div><div class="ws-text-composer"><label for="ws-custom-text"><strong>＋ Add your own text</strong><span>Write a note, description, heading or footer message. Place it anywhere.</span></label><textarea id="ws-custom-text" rows="2" placeholder="e.g. Made with love by Aryan · Welcome to our website..."></textarea><div class="ws-text-controls"><select id="ws-text-style" aria-label="Text style"><option value="paragraph">Paragraph</option><option value="heading">Heading</option><option value="small">Small caption</option></select><select id="ws-text-placement" aria-label="Text placement"><option value="after">Below selected element</option><option value="top">Top of website</option><option value="end">Bottom of home page</option><option value="footer">Footer (every page)</option></select><button type="button" id="ws-add-text">Add text to website ↗</button></div></div><p id="ws-arrange-status" role="status" aria-live="polite">Tip: you can also drag elements directly in the editor. Select a button to move it to another section.</p>`;
   shell.parentNode.insertBefore(toolbar,shell);
   const $=s=>toolbar.querySelector(s);
+  const tagSelect=document.createElement('select');
+  tagSelect.id='ws-insert-dynamic';
+  tagSelect.setAttribute('aria-label','Add a dynamic tag from project details');
+  tagSelect.title='Text-only fields from your Project Details form — not buttons or dropdown menus';
+  tagSelect.innerHTML='<option value="">Tt  Dynamic Text ▾</option><option value="company">Tt  Company name</option><option value="audience">Tt  Target audience</option><option value="description">Tt  Company description</option><option value="pages">Tt  Website pages</option><option value="timeline">Tt  Launch timeline</option>';
+  toolbar.querySelector('#ws-insert-dropdown').after(tagSelect);
+  const horizontalButtons=document.createElement('span');horizontalButtons.className='ws-arrange-horizontal';
+  horizontalButtons.innerHTML='<button type="button" id="ws-shift-left" title="Move selected element left by 24 pixels">← Left</button><button type="button" id="ws-shift-right" title="Move selected element right by 24 pixels">Right →</button>';
+  tagSelect.after(horizontalButtons);
+  tagSelect.addEventListener('change',()=>{
+    const key=tagSelect.value;tagSelect.value='';if(!key)return;
+    if(window.WebSprintDynamicTags?.insert(key))status('Dynamic tag added. It displays the value from Step 03 and can be moved or resized.');
+    else status('The preview editor is still loading. Please try again.');
+  });
   const status=message=>{$('#ws-arrange-status').textContent=message;};
   const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const selected=()=>editorRef()?.getSelected()||null;
+  const shiftSelected=direction=>{
+    const c=selected();if(!c)return status('Click an element in the preview first.');
+    const current=parseFloat(c.getStyle()?.left)||0;
+    c.addStyle({position:'relative',left:Math.max(-1200,Math.min(1200,current+24*direction))+'px'});
+    editorRef()?.refresh?.();
+    status('Moved '+(direction>0?'right':'left')+' by 24px. Keep clicking for more, or use the drag handle for precise placement.');
+  };
+  $('#ws-shift-left').onclick=()=>shiftSelected(-1);
+  $('#ws-shift-right').onclick=()=>shiftSelected(1);
   const label=c=>{
     const tag=(c?.get('tagName')||'Element').toLowerCase();
     const name=String(c?.get('content')||'').replace(/<[^>]*>/g,'').trim();
@@ -85,6 +108,7 @@
     const created=Array.isArray(added)?added[0]:added;
     if(created)e.select(created);
     update();status('Component added. Double-click its text to edit, then move it anywhere you like.');
+    return created;
   };
   const buttonMarkup='<a href="#/contact" style="display:inline-block;padding:13px 22px;background:#397f65;color:#ffffff;border-radius:12px;text-decoration:none;font-weight:700">Your new button ↗</a>';
   const dropdownMarkup='<details class="ws-custom-dropdown" style="display:inline-block;width:max-content;min-width:0;max-width:100%;border:1px solid #80808045;border-radius:12px;background:var(--ws-soft);color:var(--ws-ink);padding:12px 15px;box-shadow:0 8px 25px rgba(19,42,31,.08)"><summary style="cursor:pointer;font-weight:700">Explore options ▾</summary><div class="ws-custom-dropdown-menu" style="display:grid;gap:3px;margin-top:10px;padding:7px;border:1px solid #80808045;border-radius:10px;background:var(--ws-bg);box-shadow:0 16px 36px rgba(19,42,31,.12)"><a href="#/about" style="display:block;padding:11px 13px;border-radius:7px;color:var(--ws-ink);text-decoration:none;font-size:14px">About us</a><a href="#/contact" style="display:block;padding:11px 13px;border-radius:7px;color:var(--ws-ink);text-decoration:none;font-size:14px">Contact us</a><a href="#/home" style="display:block;padding:11px 13px;border-radius:7px;color:var(--ws-ink);text-decoration:none;font-size:14px">Home</a></div></details>';
