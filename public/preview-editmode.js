@@ -13,6 +13,9 @@
   const toggle=document.createElement('button');
   toggle.className='ws-editmode-toggle';toggle.type='button';toggle.textContent='✎ Edit directly on page';
   stageTop.append(toggle);
+  const freeMoveTip=document.createElement('span');freeMoveTip.className='ws-free-move-tip';freeMoveTip.hidden=true;
+  freeMoveTip.textContent='✥ FREE POSITION ON · Select a button, then drag the button itself anywhere (including the middle). Blue handle = reorder sections.';
+  stageTop.append(freeMoveTip);
   const panel=document.createElement('div');panel.className='ws-inline-design';panel.hidden=true;
   panel.innerHTML=`<div class="ws-inline-design-head"><div><strong>Design the page your way</strong><p>Select an element on the canvas, drag it to rearrange, or change its appearance below.</p></div><button type="button" id="ws-finish-edit">✓ Done editing</button></div><div class="ws-inline-design-controls"><label>Selected text<input id="ws-inline-text" placeholder="Select a button or text element first"></label><label>Button shape<select id="ws-inline-shape"><option value="pill">Pill / fully rounded</option><option value="rounded">Soft rounded</option><option value="square">Straight corners</option></select></label><label>Button size<select id="ws-inline-size"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></label><label>Button colour<input id="ws-inline-colour" type="color" value="#397f65"></label><button type="button" id="ws-apply-design">Apply to selected element</button></div><p id="ws-inline-status" role="status" aria-live="polite">Click an element in the page to select it. Drag to move; use the built-in style panel for precise spacing.</p>`;
   stage.parentNode.insertBefore(panel,stage);
@@ -34,9 +37,14 @@
     e?.refresh?.();inspect('#ws-simple-status').textContent='✓ Moved '+place+'.';
   });
   const precision=document.createElement('section');precision.className='ws-precision-move';
-  precision.innerHTML='<div class="ws-precision-title"><strong>Move it anywhere</strong><small>Works even if it is the only item on the row.</small></div><button type="button" id="ws-grab-move">✥ Grab & move on canvas</button><div class="ws-nudge-pad"><span></span><button type="button" data-nudge="0,-8" aria-label="Move up 8 pixels">↑</button><span></span><button type="button" data-nudge="-8,0" aria-label="Move left 8 pixels">←</button><button type="button" id="ws-move-reset" aria-label="Reset position">⌖</button><button type="button" data-nudge="8,0" aria-label="Move right 8 pixels">→</button><span></span><button type="button" data-nudge="0,8" aria-label="Move down 8 pixels">↓</button><span></span></div><div class="ws-precision-coordinates"><label>Left / right<input type="range" id="ws-move-x" min="-500" max="500" step="1" value="0"></label><label>Up / down<input type="range" id="ws-move-y" min="-500" max="500" step="1" value="0"></label></div><p id="ws-move-position">X: 0 · Y: 0</p>';
+  precision.innerHTML='<div class="ws-precision-title"><strong>Move it anywhere</strong><small>Works even if it is the only item on the row.</small></div><button type="button" id="ws-grab-move">✥ Grab & move on canvas</button><div class="ws-move-sensitivity"><label>Mouse sensitivity <output id="ws-mouse-value">1.0×</output><input id="ws-mouse-sensitivity" type="range" min="0.25" max="2.5" step="0.05" value="1"></label><label>Touch sensitivity <output id="ws-touch-value">0.65×</output><input id="ws-touch-sensitivity" type="range" min="0.25" max="2.5" step="0.05" value="0.65"></label><small>Mouse and finger movement are tuned separately. Lower = finer control.</small></div><div class="ws-nudge-pad"><span></span><button type="button" data-nudge="0,-8" aria-label="Move up 8 pixels">↑</button><span></span><button type="button" data-nudge="-8,0" aria-label="Move left 8 pixels">←</button><button type="button" id="ws-move-reset" aria-label="Reset position">⌖</button><button type="button" data-nudge="8,0" aria-label="Move right 8 pixels">→</button><span></span><button type="button" data-nudge="0,8" aria-label="Move down 8 pixels">↓</button><span></span></div><div class="ws-precision-coordinates"><label>Left / right<input type="range" id="ws-move-x" min="-500" max="500" step="1" value="0"></label><label>Up / down<input type="range" id="ws-move-y" min="-500" max="500" step="1" value="0"></label></div><p id="ws-move-position">X: 0 · Y: 0</p>';
   position.after(precision);
   let moving=false,dragging=null,moveDoc=null;
+  const sensitivity={mouse:1,touch:0.65};
+  [['mouse','ws-mouse-sensitivity','ws-mouse-value'],['touch','ws-touch-sensitivity','ws-touch-value']].forEach(([kind,inputId,outputId])=>{
+    const input=inspect('#'+inputId),output=inspect('#'+outputId);
+    input.oninput=()=>{sensitivity[kind]=Number(input.value);output.textContent=sensitivity[kind].toFixed(2)+'×';};
+  });
   const numberStyle=(c,key)=>{const n=parseFloat(c?.getStyle?.()[key]);return Number.isFinite(n)?n:0;};
   const showCoordinates=()=>{
     const c=selected(),x=numberStyle(c,'left'),y=numberStyle(c,'top');
@@ -61,23 +69,27 @@
     const c=selected();if(!c)return;
     moveTo(axis==='x'?Number(inspect('#ws-move-x').value):numberStyle(c,'left'),axis==='y'?Number(inspect('#ws-move-y').value):numberStyle(c,'top'));
   });
-  const stopGrab=()=>{moving=false;dragging=null;stage.classList.remove('ws-grab-active');inspect('#ws-grab-move').textContent='✥ Grab & move on canvas';};
+  const stopGrab=()=>{moving=false;dragging=null;stage.classList.remove('ws-grab-active');moveDoc?.body?.classList.remove('ws-touch-grab');inspect('#ws-grab-move').textContent='✥ Enable free positioning';freeMoveTip.hidden=true;};
+  const startGrab=()=>{
+    moving=true;stage.classList.add('ws-grab-active');attachCanvas();moveDoc?.body?.classList.add('ws-touch-grab');
+    inspect('#ws-grab-move').textContent='✓ Free positioning ON · switch to reorder';freeMoveTip.hidden=false;
+  };
   inspect('#ws-grab-move').onclick=()=>{
     if(moving){stopGrab();return;}
     if(!selected())return inspect('#ws-simple-status').textContent='Select an element first.';
-    moving=true;stage.classList.add('ws-grab-active');inspect('#ws-grab-move').textContent='✓ Finish moving';
-    inspect('#ws-simple-status').textContent='Drag the selected element directly. Use arrows for fine adjustments.';
+    startGrab();inspect('#ws-simple-status').textContent='Drag the selected element itself. The blue toolbar handle only reorders sections.';
   };
   const down=event=>{
     if(!editing||!moving||event.button!==0)return;
     const c=selected(),el=c?.getEl?.();if(!el||!(el===event.target||el.contains(event.target)))return;
-    dragging={id:event.pointerId,x:event.clientX,y:event.clientY,startX:numberStyle(c,'left'),startY:numberStyle(c,'top')};
+    const pointerKind=event.pointerType==='touch'?'touch':'mouse';
+    dragging={id:event.pointerId,x:event.clientX,y:event.clientY,startX:numberStyle(c,'left'),startY:numberStyle(c,'top'),scale:sensitivity[pointerKind]};
     event.preventDefault();event.stopImmediatePropagation();
   };
   const drag=event=>{
     if(!dragging||event.pointerId!==dragging.id)return;
     event.preventDefault();event.stopImmediatePropagation();
-    moveTo(dragging.startX+event.clientX-dragging.x,dragging.startY+event.clientY-dragging.y);
+    moveTo(dragging.startX+(event.clientX-dragging.x)*dragging.scale,dragging.startY+(event.clientY-dragging.y)*dragging.scale);
   };
   const up=event=>{if(dragging&&event.pointerId===dragging.id){dragging=null;event.stopImmediatePropagation();}};
   const keyNudge=event=>{
@@ -93,8 +105,11 @@
   document.addEventListener('keydown',keyNudge);
   const attachCanvas=()=>{
     const doc=editorRef()?.Canvas?.getDocument?.();if(!doc||doc===moveDoc)return;
-    if(moveDoc){moveDoc.removeEventListener('pointerdown',down,true);moveDoc.removeEventListener('pointermove',drag,true);moveDoc.removeEventListener('pointerup',up,true);moveDoc.removeEventListener('keydown',keyNudge,true);}
-    moveDoc=doc;doc.addEventListener('pointerdown',down,true);doc.addEventListener('pointermove',drag,true);doc.addEventListener('pointerup',up,true);doc.addEventListener('keydown',keyNudge,true);
+    if(moveDoc){moveDoc.removeEventListener('pointerdown',down,true);moveDoc.removeEventListener('pointermove',drag,true);moveDoc.removeEventListener('pointerup',up,true);moveDoc.removeEventListener('pointercancel',up,true);moveDoc.removeEventListener('keydown',keyNudge,true);}
+    moveDoc=doc;doc.addEventListener('pointerdown',down,true);doc.addEventListener('pointermove',drag,true);doc.addEventListener('pointerup',up,true);doc.addEventListener('pointercancel',up,true);doc.addEventListener('keydown',keyNudge,true);
+    let style=doc.getElementById('ws-touch-move-style');
+    if(!style){style=doc.createElement('style');style.id='ws-touch-move-style';style.textContent='body.ws-touch-grab,body.ws-touch-grab *{touch-action:none!important}';doc.head.append(style);}
+    if(moving)doc.body.classList.add('ws-touch-grab');
   };
   const status=message=>{$('#ws-inline-status').textContent=message;};
   const selected=()=>editorRef()?.getSelected();
@@ -163,7 +178,7 @@
     if(window.matchMedia('(max-width: 750px)').matches)e.setDevice('Mobile');
     requestAnimationFrame(()=>requestAnimationFrame(refreshCanvas));
     requestAnimationFrame(()=>requestAnimationFrame(attachCanvas));
-    syncSelection();status('Edit mode is on. Drag elements by their selection handle, or use the Move controls beside the page.');
+    syncSelection();startGrab();status('Free positioning is ON. Select an element, then drag the element itself to any spot—even the middle. Blue toolbar handles reorder page sections.');
   };
   const exit=()=>{
     if(!editing)return;

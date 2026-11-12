@@ -25,15 +25,16 @@
   const status=message=>{$('#ws-arrange-status').textContent=message;};
   const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const selected=()=>editorRef()?.getSelected()||null;
-  const shiftSelected=direction=>{
+  const shiftSelected=(axis,direction)=>{
     const c=selected();if(!c)return status('Click an element in the preview first.');
-    const current=parseFloat(c.getStyle()?.left)||0;
-    c.addStyle({position:'relative',left:Math.max(-1200,Math.min(1200,current+24*direction))+'px'});
+    const current=parseFloat(c.getStyle()?.[axis])||0;
+    c.addStyle({position:'relative',[axis]:Math.max(-1200,Math.min(1200,current+24*direction))+'px'});
     editorRef()?.refresh?.();
-    status('Moved '+(direction>0?'right':'left')+' by 24px. Keep clicking for more, or use the drag handle for precise placement.');
+    const directionName=axis==='top'?(direction>0?'down':'up'):(direction>0?'right':'left');
+    status('Moved '+directionName+' by 24px. Keep clicking for more, or use Free Position for precise placement.');
   };
-  $('#ws-shift-left').onclick=()=>shiftSelected(-1);
-  $('#ws-shift-right').onclick=()=>shiftSelected(1);
+  $('#ws-shift-left').onclick=()=>shiftSelected('left',-1);
+  $('#ws-shift-right').onclick=()=>shiftSelected('left',1);
   const label=c=>{
     const tag=(c?.get('tagName')||'Element').toLowerCase();
     const name=String(c?.get('content')||'').replace(/<[^>]*>/g,'').trim();
@@ -46,10 +47,10 @@
   const update=()=>{
     const c=selected(),valid=Boolean(c&&c.parent());
     $('#ws-selected-label').textContent=valid?label(c):'Select an element in the canvas to move or customise it.';
-    const parent=valid?c.parent():null;
-    const index=parent?parent.components().indexOf(c):-1;
-    $('#ws-move-up').disabled=!valid||index<=0;
-    $('#ws-move-down').disabled=!valid||index>=parent.components().length-1;
+    // Directional controls move in pixels, not sibling order. A lone button
+    // still needs to move up and down within its section.
+    $('#ws-move-up').disabled=!valid;
+    $('#ws-move-down').disabled=!valid;
     $('#ws-duplicate').disabled=!valid;
     $('#ws-delete').disabled=!valid;
     const choices=sections();
@@ -64,16 +65,8 @@
     select.disabled=!valid||!choices.length;
     if([...select.options].some(x=>x.value===current))select.value=current;
   };
-  const moveBy=delta=>{
-    const e=editorRef(),c=selected();if(!e||!c||!c.parent())return;
-    const parent=c.parent(),list=parent.components(),index=list.indexOf(c);
-    const next=Math.max(0,Math.min(list.length-1,index+delta));
-    if(next===index)return;
-    c.move(parent,{at:next});e.select(c);update();
-    status('Element moved. Open Live Preview to check its new position.');
-  };
-  $('#ws-move-up').onclick=()=>moveBy(-1);
-  $('#ws-move-down').onclick=()=>moveBy(1);
+  $('#ws-move-up').onclick=()=>shiftSelected('top',-1);
+  $('#ws-move-down').onclick=()=>shiftSelected('top',1);
   $('#ws-move-section').onchange=event=>{
     const e=editorRef(),c=selected(),destination=sections()[Number(event.target.value)];
     if(!e||!c||!destination||c===destination)return;
