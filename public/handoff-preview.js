@@ -33,7 +33,10 @@
     });
     if(!pages.length)return {pages:[],images:[]};
     const images=[];
-    if(!await loadCapture())return {pages,images};
+    // Image rendering is optional. Never hold the customer's submission hostage
+    // to a slow canvas library, remote image, or resource-constrained phone.
+    const captureTask=(async()=>{
+    if(!await loadCapture())return;
     const iframe=document.createElement('iframe');
     iframe.title='Temporary page capture';iframe.setAttribute('aria-hidden','true');
     iframe.setAttribute('sandbox','allow-same-origin');
@@ -42,21 +45,25 @@
     try{
       await new Promise(resolve=>{iframe.onload=()=>resolve();iframe.srcdoc=html;setTimeout(resolve,5000);});
       const doc=iframe.contentDocument;
-      if(!doc)return {pages,images};
+      if(!doc)return;
       const all=[...doc.querySelectorAll('[data-ws-site] [data-route]')];
       // Capture the pages from the customer's final preview, with a bounded
       // attachment count to keep the email reliably deliverable.
-      for(const page of pages.slice(0,10)){
+      for(const page of pages.slice(0,6)){
         all.forEach(element=>{element.hidden=element.getAttribute('data-route')!==page.route;});
         const site=doc.querySelector('[data-ws-site]');if(!site)break;
-        const canvas=await window.html2canvas(site,{backgroundColor:'#fff',useCORS:true,allowTaint:false,scale:.6,width:960,height:700,windowWidth:960,windowHeight:700,logging:false});
-        const dataUrl=canvas.toDataURL('image/jpeg',.58);
+        const canvas=await window.html2canvas(site,{backgroundColor:'#fff',useCORS:true,allowTaint:false,scale:.45,width:960,height:700,windowWidth:960,windowHeight:700,logging:false});
+        const dataUrl=canvas.toDataURL('image/jpeg',.48);
         const base64=dataUrl.split(',')[1];
-        if(base64&&base64.length<360000)images.push({route:page.route,content:base64});
+        if(base64&&base64.length<200000)images.push({route:page.route,content:base64});
       }
     }catch(error){console.warn('Optional page image capture unavailable:',error.message);}
     finally{iframe.remove();}
-    return {pages,images};
+    })();
+    let timer;
+    await Promise.race([captureTask,new Promise(resolve=>{timer=setTimeout(resolve,9000);})]);
+    clearTimeout(timer);
+    return {pages,images:images.slice(0,6)};
   };
   window.fetch=async (input,options)=>{
     const url=typeof input==='string'?input:input?.url||'';

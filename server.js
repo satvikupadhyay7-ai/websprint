@@ -12,6 +12,12 @@ app.use(express.json({ limit: '6mb' }));
 app.use('/vendor/grapesjs', express.static(path.join(__dirname, 'node_modules', 'grapesjs', 'dist'), { maxAge: '30d', immutable: true }));
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '5m', etag: true }));
 
+// Safe deployment diagnostic: only configuration presence, never key values.
+app.get('/api/health', (_req, res) => res.json({
+  ok: true,
+  emailConfigured: Boolean(process.env.RESEND_API_KEY && process.env.FROM_EMAIL && process.env.TO_EMAIL)
+}));
+
 const clean = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const escapeHtml = (value) => clean(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 const sendEmail = async (payload) => {
