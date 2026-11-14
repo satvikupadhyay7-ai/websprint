@@ -46,3 +46,24 @@ body{background:radial-gradient(ellipse 70% 24% at 55% 2%,#253b23 0%,transparent
 .mock .micro{margin-top:35px}.mock h2{margin-bottom:12px}.mock .mockbottom{margin-top:22px}
 .browserbar span:nth-child(2){letter-spacing:.02em}
 @media(max-width:800px){.hero-trust{justify-content:center}}
+/* WebSprint studio art direction: warm graphite, cream surfaces and controlled lime. */
+body{background:#101a17;color:#f3f4e9;font-family:Manrope,'DM Sans',sans-serif}
+.topbar{background:#101a17f5;border-bottom:1px solid #546a5a45}
+.topbar .brand{letter-spacing:-.06em}.topbar .mark{background:#cdf08b;color:#17271f;border-radius:11px}
+.hero{padding-top:100px;padding-bottom:100px}.hero h1{letter-spacing:-.075em;line-height:1.02}.hero h1 em{color:#d6f4a3}.lead{max-width:490px;line-height:1.8}
+.visual .browser{border-radius:14px;box-shadow:0 35px 90px #0007;overflow:hidden}
+.studio-wrap{border-color:#55694d6b;background:linear-gradient(140deg,#1b2a20,#111b17 72%);box-shadow:0 25px 60px #0005}
+.studio-heading h3{letter-spacing:-.055em}.studio-heading h3 em{color:#d2f59a}
+.studio-shell{border:1px solid #637b674d;background:#e9eee6;border-radius:15px;box-shadow:0 20px 55px #0006}
+.ai-bar{background:#223025;border-color:#4c6652}.ai-label{letter-spacing:.13em}
+.studio-btn,.ai-tools button{background:#29382c;border-color:#577058;color:#f0f6ed;transition:transform .16s,background .16s}
+.studio-btn:hover,.ai-tools button:hover{transform:translateY(-2px);background:#344a36}
+.studio-actions #previewBtn{background:#d6f49d;color:#192c20}.studio-actions #previewBtn:hover{background:#e8ffbe}
+.gjs-one-bg{background:#1d2b24!important}.gjs-three-bg{background:#2c4032!important}.gjs-four-color,.gjs-four-color-h:hover{color:#d0ef94!important}.gjs-cv-canvas{background:#e7ebe2}
+.ws-arrange-toolbar{background:linear-gradient(135deg,#253a2d,#192720);border-color:#5f7c61}.ws-arrange-actions button,.ws-arrange-destination{background:#314736;border-color:#638069}
+.builder{border:1px solid #58705555;background:#17241c;border-radius:18px}.builder aside{background:#1b2c21}.builder-main{background:#17241c}
+.panel h3,.builder-intro h2{letter-spacing:-.06em}.template,.theme{border-color:#53644f;background:#202e24}.template:hover,.theme:hover{border-color:#c9ef91}
+.field input,.field select,.field textarea{background:#1f2e24;border-color:#4b6651}.feature-head{border-color:#53664d}
+.backend-box{background:#1c2d22;border-color:#557258}.backend-options label,.features label{background:#243428;border-color:#536951}
+.btn{border-radius:9px}.btn:not(.secondary){background:#d0f18f;color:#172a1e}.sectionhead h2,.about h2{letter-spacing:-.055em}
+@media(max-width:700px){.hero{padding-top:58px}.studio-wrap{margin:20px -7px;padding:12px}.studio-actions{gap:6px}.topbar nav{display:none}}

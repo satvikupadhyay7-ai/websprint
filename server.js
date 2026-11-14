@@ -52,8 +52,8 @@ function createRequirementsPdf(fields, customerName, projectName) {
         ['Client & contact', ['Customer name', 'Customer email', 'Phone number', 'Preferred contact method', 'Preferred contact time']],
         ['Project overview', ['Project / brand name', 'Website type', 'Project description', 'Target audience', 'Requested timeline']],
         ['Website structure & design', ['Pages requested', 'Selected website features', 'Visual theme', 'Theme / colour notes', 'Competitor / inspiration websites', 'Reference website']],
-        ['Backend & functionality', ['Backend requirements', 'Other backend requirements', 'Data to store/manage', 'User roles', 'Developer recommendations']],
-        ['Delivery details', ['Domain status', 'Content / images status', 'Additional requirements']]
+        ['Backend & functionality', ['Backend requirements', 'Other backend requirements', 'Data to store/manage', 'User roles', 'Expected user load', 'Developer recommendations']],
+        ['Delivery details', ['Frontend link', 'Frontend attachment', 'Domain status', 'Content / images status', 'Additional requirements']]
       ];
       for (const [heading, keys] of sections) {
         if (doc.y > 690) doc.addPage();
@@ -83,6 +83,91 @@ function createRequirementsPdf(fields, customerName, projectName) {
 }
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/studio', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'studio.html')));
+app.get('/frontend', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'request.html')));
+app.get('/done-for-you', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'request.html')));
+
+// Shared intake for projects that do not use the visual studio.
+// File bytes are validated and sent as attachments; never stored publicly.
+app.post('/api/request', async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (body.website) return res.json({ ok: true }); // spam honeypot
+    const mode = clean(body.mode, 30);
+    const name = clean(body.name, 120);
+    const email = clean(body.email, 254);
+    if (!['frontend', 'done-for-you'].includes(mode) || !name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || body.consent !== true) {
+      return res.status(400).json({ error: 'Please complete your name, valid email, project type and contact consent.' });
+    }
+    if (!process.env.RESEND_API_KEY || !process.env.FROM_EMAIL || !process.env.TO_EMAIL) {
+      return res.status(503).json({ error: 'Email service is not configured. Please try again later.' });
+    }
+    const fields = {
+      'Customer name': name, 'Customer email': email,
+      'Phone number': clean(body.phone, 70) || 'Not provided',
+      'Preferred contact method': clean(body.contactMethod, 80) || 'Email',
+      'Project / brand name': clean(body.projectName, 150) || 'Not specified',
+      'Website type': mode === 'frontend' ? 'Bring your own frontend — backend development' : 'Full website — frontend and backend',
+      'Project description': clean(body.description, 5000),
+      'Pages requested': clean(body.pages, 2500),
+      'Target audience': clean(body.audience, 1000),
+      'Selected website features': (Array.isArray(body.features) ? body.features.slice(0, 40).map(v => clean(v, 120)) : []).join(', '),
+      'Backend requirements': clean(body.backendNeeds, 4000),
+      'Data to store/manage': clean(body.dataNeeds, 2500),
+      'User roles': clean(body.userRoles, 1000),
+      'Expected user load': clean(body.expectedLoad, 120),
+      'Requested timeline': clean(body.timeline, 150),
+      'Competitor / inspiration websites': clean(body.references, 2500),
+      'Additional requirements': clean(body.extra, 4000)
+    };
+    const file = body.file;
+    const attachments = [];
+    if (file) {
+      if (mode !== 'frontend' || typeof file !== 'object') return res.status(400).json({ error: 'Unexpected file attachment.' });
+      const filename = clean(file.name, 120).replace(/[^a-zA-Z0-9._-]/g, '_');
+      const ext = path.extname(filename).toLowerCase();
+      const allowed = ['.zip', '.html', '.htm', '.css', '.js', '.jsx', '.tsx', '.ts', '.pdf'];
+      const content = String(file.content || '');
+      if (!allowed.includes(ext) || content.length > 4_800_000 || !/^[a-zA-Z0-9+/]*={0,2}$/.test(content)) {
+        return res.status(400).json({ error: 'Upload a ZIP, HTML, CSS, JS, TS or PDF file up to 3.5 MB.' });
+      }
+      const bytes = Buffer.from(content, 'base64');
+      if (!bytes.length || bytes.length > 3_500_000) return res.status(400).json({ error: 'File is empty or exceeds 3.5 MB.' });
+      attachments.push({ filename, content: bytes.toString('base64') });
+      fields['Frontend attachment'] = filename;
+    }
+    if (mode === 'frontend' && !attachments.length && !clean(body.frontendLink, 1000)) {
+      return res.status(400).json({ error: 'Please upload your frontend or add a link to it.' });
+    }
+    if (mode === 'frontend') fields['Frontend link'] = clean(body.frontendLink, 1000) || 'Attached file';
+    const pdf = await createRequirementsPdf(fields, name, clean(body.projectName, 120));
+    attachments.push({ filename: 'WebSprint-project-brief.pdf', content: pdf.toString('base64') });
+    const rows = Object.entries(fields).map(([k, v]) => `<tr><th style="padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid #e3e8e5;width:35%">${escapeHtml(k)}</th><td style="padding:12px;border-bottom:1px solid #e3e8e5;white-space:pre-wrap">${escapeHtml(v || 'Not specified')}</td></tr>`).join('');
+    const heading = mode === 'frontend' ? 'Frontend handoff · backend build' : 'Complete website · design and development';
+    const shell = (title, contents) => `<div style="background:#f2f5f0;padding:35px 14px;font-family:Arial,sans-serif;color:#152c26"><div style="max-width:660px;margin:auto;border:1px solid #d9e4dc;background:#fff;border-radius:18px;overflow:hidden"><header style="background:#10251e;padding:28px;color:white"><div style="color:#c7ee8a;letter-spacing:2px;font-weight:700;font-size:11px">WEBSPRINT / ${escapeHtml(heading).toUpperCase()}</div><h1 style="margin:15px 0 0;font-size:28px">${title}</h1></header><div style="padding:28px;line-height:1.7">${contents}</div></div></div>`;
+    await sendEmail({
+      from: process.env.FROM_EMAIL, to: [process.env.TO_EMAIL], reply_to: email,
+      subject: `New WebSprint ${mode === 'frontend' ? 'backend' : 'full-build'} request — ${clean(body.projectName || name, 90)}`,
+      html: shell('A new project has arrived.', `<p>Review the requirements and attached files below.</p><table style="border-collapse:collapse;width:100%;font-size:12px">${rows}</table>`),
+      text: Object.entries(fields).map(([k,v]) => `${k}: ${v}`).join('\n\n'), attachments
+    });
+    let confirmationEmailSent = false;
+    try {
+      await sendEmail({
+        from: process.env.FROM_EMAIL, to: [email], reply_to: process.env.TO_EMAIL,
+        subject: `We received your WebSprint project request`,
+        html: shell(`Thanks, ${escapeHtml(name)}.`, `<p>Your <b>${escapeHtml(heading)}</b> request has reached the WebSprint team.</p><p>We're reviewing your brief and will contact you to clarify requirements, scope and next steps. Your project brief is attached as a PDF.</p><p>Questions or changes? Just reply to this email.</p><p style="margin-top:25px"><b>Team WebSprint</b></p>`),
+        text: `Hi ${name},\n\nYour WebSprint project request was received. Our team will review it and contact you about requirements and next steps. Your brief is attached. Reply to this email if you need to update anything.\n\nTeam WebSprint`,
+        attachments: [attachments[attachments.length - 1]]
+      });
+      confirmationEmailSent = true;
+    } catch (error) { console.error('Request confirmation failed:', error.message); }
+    return res.json({ ok: true, confirmationEmailSent });
+  } catch (error) {
+    console.error('Project intake failed:', error.message);
+    return res.status(502).json({ error: 'We could not send your request. Please try again shortly.' });
+  }
+});
 
 
 app.post('/api/ai-assist', async (req, res) => {
